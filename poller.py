@@ -89,10 +89,13 @@ def load_config():
         cfg["target_url"] = cfg["url_template"].format(date=cfg["requested_date"])
 
     required = ["target_url", "telegram_bot_token", "telegram_chat_id"]
-    if cfg.get("detector") == "bms_date":
+    detector = cfg.get("detector")
+    if detector in ("bms_date", "venue_date"):
         required.append("requested_date")
-    else:
+    elif detector != "venue_date":
         required.append("theatre")
+    if detector == "venue_date" and not (cfg.get("venue_code") or cfg.get("venue_codes")):
+        sys.exit("venue_date detector needs 'venue_code' or 'venue_codes'")
     missing = [k for k in required if not cfg.get(k)]
     if missing:
         sys.exit(f"Missing required config: {', '.join(missing)}")
@@ -185,8 +188,29 @@ def is_available_bms_date(page_text, cfg):
     return top_date == requested and requested_count >= floor
 
 
+def is_available_venue_date(page_text, cfg):
+    """
+    Theatre-specific detector: is a given venue bookable on a given date?
+
+    BMS renders a per-venue booking link like
+        /cinemas/chennai/<slug>/buytickets/<venueCode>/<date>
+    only when that venue has live shows for that exact date. Because the date
+    is baked into the link, it can't be confused with the silent fallback
+    (a fallback page carries /<code>/<fallbackDate>, not /<code>/<ourDate>).
+
+    Set venue_code (one) or venue_codes (list). With a list, it's open when
+    ANY of them is bookable for the date.
+    """
+    date = cfg["requested_date"]
+    codes = cfg.get("venue_codes") or [cfg["venue_code"]]
+    return any("/{}/{}".format(code, date) in page_text for code in codes)
+
+
 def is_available(page_text, cfg):
-    if cfg.get("detector") == "bms_date":
+    detector = cfg.get("detector")
+    if detector == "venue_date":
+        return is_available_venue_date(page_text, cfg)
+    if detector == "bms_date":
         return is_available_bms_date(page_text, cfg)
     return is_available_generic(page_text, cfg)
 
@@ -244,12 +268,15 @@ def main():
     print(f"[{label}] available={available} (was {state.get('available')})")
 
     if available and not state.get("available"):
-        if cfg.get("detector") == "bms_date":
+        if cfg.get("detector") in ("bms_date", "venue_date"):
             rd = cfg["requested_date"]
             pretty = f"{rd[6:8]}-{rd[4:6]}-{rd[0:4]}"
+            venue = cfg.get("venue_label") or cfg.get("venue_code") or ""
+            venue_line = f"Theatre: {venue}\n" if venue else ""
             msg = (
                 f"🎬 Booking just OPENED!\n\n"
                 f"{cfg.get('movie', 'Movie')}\n"
+                f"{venue_line}"
                 f"Date: {pretty}\n\n"
                 f"Book here: {cfg['target_url']}"
             )
