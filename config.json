@@ -1,9 +1,9 @@
 {
   "detector": "venue_date",
   "movie": "The Odyssey (IMAX 2D)",
-  "requested_date": "20260719",
+  "requested_date": "20260723",
   "venue_codes": ["INPR","CBMC","RAKK","TVHP","MAYJ","PVSR","ACON","PVHR","KSTK"],
   "venue_label": "INOX: LUXE Phoenix Market City, Velachery",
-  "url_template": "https://in.bookmyshow.com/movies/chennai/idhayam-murali/buytickets/ET00442409/{date}",
+  "url_template": "https://in.bookmyshow.com/movies/chennai/jana-nayagan/buytickets/ET00430817/{date}",
   "min_references": 10
 }
